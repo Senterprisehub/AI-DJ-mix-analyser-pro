@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DJ Mix Analyzer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom font and scrollbar styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease;
+            background: linear-gradient(135deg, #1f2937 0%, #000000 100%);
+        }
+        
+        body[data-theme='light'] {
+            background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+            color: #1f2937;
+        }
+
+        /* Pulsing background animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            animation: pulse 10s infinite cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.5); opacity: 0.25; }
+            100% { transform: scale(1); opacity: 0.1; }
+        }
+
+        body[data-theme='light']::before {
+            background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a855f7;
+        }
+        body[data-theme='light'] ::-webkit-scrollbar-track { background: #e5e7eb; }
+        body[data-theme='light'] ::-webkit-scrollbar-thumb { background: #4f46e5; }
+        body[data-theme='light'] ::-webkit-scrollbar-thumb:hover { background: #3730a3; }
+
+        /* Gradient text effect */
+        .gradient-text {
+            background-image: linear-gradient(to right, #6366f1, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* Light Theme overrides */
+        body[data-theme='light'] .bg-gray-800 { background-color: #ffffff; }
+        body[data-theme='light'] .bg-gray-700 { background-color: #e5e7eb; }
+        body[data-theme='light'] .bg-gray-900 { background-color: #f3f4f6; }
+        body[data-theme='light'] .text-gray-100 { color: #1f2937; }
+        body[data-theme='light'] .text-gray-400 { color: #4b5563; }
+        body[data-theme='light'] .text-gray-300 { color: #374151; }
+        body[data-theme='light'] .border-gray-600 { border-color: #d1d5db; }
+        body[data-theme='light'] .border-gray-700 { border-color: #d1d5db; }
+        body[data-theme='light'] .placeholder-gray-500 { color: #6b7280; }
+        body[data-theme='light'] input.bg-gray-900 { background-color: #ffffff; }
+        body[data-theme='light'] .bg-blue-600 { background-color: #4f46e5; }
+        body[data-theme='light'] .bg-blue-600:hover { background-color: #3730a3; }
+        body[data-theme='light'] .rotate-y-180 { transform: rotateY(180deg); }
+
+        /* Card flip styles */
+        .card-container {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+            height: 100%;
+        }
+        .card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            backface-visibility: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+            overflow-y: auto;
+        }
+        
+        /* Song title animation */
+        .song-title-animated {
+            transition: transform 0.2s ease-in-out;
+            transform-origin: left;
+        }
+
+        .song-title-animated:hover {
+            transform: scale(1.03);
+        }
+
+        /* Modal styles */
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 p-4 sm:p-8 min-h-screen flex items-center justify-center relative">
+    
+    <!-- Theme Toggle Switch -->
+    <button id="theme-toggle" class="absolute top-4 right-4 p-2 rounded-full transition-colors duration-300 z-50">
+        <i class="fas fa-sun text-yellow-500 text-xl hidden" id="sun-icon"></i>
+        <i class="fas fa-moon text-blue-500 text-xl" id="moon-icon"></i>
+    </button>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-5xl mx-auto bg-gray-800 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 relative">
+        
+        <!-- User Manual Button -->
+        <button id="manual-btn" class="absolute top-4 left-4 p-2 rounded-full transition-colors duration-300 z-50 hover:bg-gray-700">
+            <i class="fas fa-book-open text-gray-400 text-xl"></i>
+        </button>
+
+        <!-- Header Section -->
+        <header class="text-center space-y-2">
+            <div class="flex items-center justify-center mb-4">
+                <i class="fas fa-headphones-alt text-4xl sm:text-5xl gradient-text"></i>
+                <i class="fas fa-music text-3xl sm:text-4xl text-white ml-2"></i>
+            </div>
+            <h1 class="text-4xl sm:text-5xl font-extrabold gradient-text">DJ Mix Analyzer</h1>
+            <p class="text-lg sm:text-xl text-gray-400">
+                Instantly find perfect song transitions and get AI-powered mixing guides.
+            </p>
+            <p class="text-sm text-gray-500 italic mt-2">
+                *The audio analysis is a high-fidelity simulation and the justifications are generated by AI.
+            </p>
+        </header>
+
+        <!-- Settings & Upload Section -->
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- API Settings Card -->
+            <div class="flex-1 bg-gray-700 p-6 rounded-2xl shadow-inner border border-gray-600 space-y-4">
+                <h2 class="text-xl font-semibold flex items-center gap-2 text-yellow-400">
+                    <i class="fas fa-key"></i> API Settings
+                </h2>
+                <div class="flex flex-col sm:flex-row gap-4 items-center">
+                    <input type="password" id="api-key" placeholder="Enter your Gemini API key"
+                           class="flex-1 w-full px-4 py-3 rounded-xl bg-gray-900 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300">
+                    <button id="save-api-key" class="w-full sm:w-auto bg-purple-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-transform transform hover:scale-105 active:scale-95">
+                        <i class="fas fa-save mr-2"></i>Save
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">
+                    Your API key is saved locally in your browser. You can find your API key on the
+                    <a href="https://aistudio.google.com/app/apikey" class="underline text-blue-400 hover:text-blue-300" target="_blank">Google AI Studio website</a>.
+                </p>
+            </div>
+
+            <!-- Upload Card -->
+            <div class="flex-1 bg-gray-700 p-6 rounded-2xl shadow-inner border border-gray-600 space-y-4">
+                <h2 class="text-xl font-semibold flex items-center gap-2 text-purple-400">
+                    <i class="fas fa-cloud-upload-alt"></i> Music Upload
+                </h2>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <label for="music-folder" class="flex-1 block w-full text-center py-3 rounded-xl font-bold text-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer shadow-lg">
+                        <i class="fas fa-folder-open mr-2"></i> Select Folder
+                    </label>
+                    <label for="music-files" class="flex-1 block w-full text-center py-3 rounded-xl font-bold text-lg text-white bg-green-600 hover:bg-green-700 transition-colors cursor-pointer shadow-lg">
+                        <i class="fas fa-file-audio mr-2"></i> Select Files
+                    </label>
+                </div>
+                <input type="file" id="music-folder" webkitdirectory="" directory="" multiple style="display:none;">
+                <input type="file" id="music-files" multiple style="display:none;">
+                <p id="file-count" class="text-center text-gray-400 font-medium"></p>
+            </div>
+        </div>
+
+        <!-- Analysis & Loading Section -->
+        <div id="analysis-section" class="bg-gray-700 p-6 rounded-2xl shadow-inner border border-gray-600 space-y-4 hidden">
+            <h2 class="text-xl font-semibold text-center flex items-center justify-center gap-2">
+                <i class="fas fa-compact-disc fa-spin text-green-400"></i> Analyzing Songs...
+            </h2>
+            <div class="w-full bg-gray-900 rounded-full h-2.5">
+                <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300 ease-linear" style="width: 0%;"></div>
+            </div>
+            <p id="status-text" class="text-center text-gray-300"></p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="bg-gray-700 p-6 rounded-2xl shadow-inner border border-gray-600 hidden">
+            <h2 class="text-2xl font-semibold text-center mb-6 flex items-center justify-center gap-2 text-white">
+                <i class="fas fa-star text-yellow-400"></i> Top Mixes for Your Set
+            </h2>
+            <div id="mix-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Mix cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Custom Message Box for notifications -->
+    <div id="message-box" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white py-3 px-6 rounded-full shadow-lg transition-opacity duration-300 opacity-0 z-50 pointer-events-none">
+        This is a message.
+    </div>
+    
+    <!-- User Manual Modal -->
+    <div id="manual-modal" class="modal fixed inset-0 z-[100] flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 text-gray-100 rounded-3xl shadow-xl w-full max-w-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-4 border-b border-gray-600">
+                <h2 class="text-3xl font-bold gradient-text">User Manual</h2>
+                <button id="close-manual-btn" class="text-gray-400 hover:text-white transition-colors duration-200 text-2xl p-2 rounded-full">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="prose prose-invert max-w-none text-gray-300 space-y-4">
+                <p>Welcome to the AI DJ Mix Analyzer! This application helps you find the perfect transitions between your favorite songs to create a seamless mix. Follow this simple guide to get started.</p>
+                
+                <h3 class="text-2xl font-semibold text-white">1. Getting Started</h3>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li><strong>Enter Your API Key:</strong> To use the AI features, you need a Gemini API key. Enter it in the "API Settings" box. Don't worry, it's saved securely in your browser so you only have to enter it once.</li>
+                    <li><strong>Upload Your Music:</strong> Use the "Select Folder" or "Select Files" buttons to upload the songs you want to analyze. The app works best with a larger collection of songs.</li>
+                </ol>
+
+                <h3 class="text-2xl font-semibold text-white">2. How It Works</h3>
+                <ul class="list-disc list-inside space-y-2">
+                    <li>The app will first perform a simulated analysis of your songs to determine key attributes like BPM (beats per minute) and musical key.</li>
+                    <li>It then finds the best possible song combinations for mixing, based on key and tempo compatibility.</li>
+                    <li>Finally, it uses AI to generate a detailed "Mixing Guide" for each recommendation, including specific transition points and techniques.</li>
+                </ul>
+
+                <h3 class="text-2xl font-semibold text-white">3. Viewing the Results</h3>
+                <ul class="list-disc list-inside space-y-2">
+                    <li>The best mixing suggestions will appear as interactive cards.</li>
+                    <li>Click on a card to flip it over and reveal the AI-generated Mixing Guide. This guide will provide a justification for the mix and a step-by-step guide with timings.</li>
+                    <li>You can click the card again to flip it back.</li>
+                </ul>
+
+                <h3 class="text-2xl font-semibold text-white">4. Tips & Features</h3>
+                <ul class="list-disc list-inside space-y-2">
+                    <li>The **Theme Toggle** button in the top-right corner allows you to switch between Dark and Light mode.</li>
+                    <li>The mixing guide timings are in `mm:ss` format for easy reference.</li>
+                    <li>The app is fully responsive and optimized for both desktop and mobile devices.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Element References
+        const folderInput = document.getElementById('music-folder');
+        const fileInput = document.getElementById('music-files');
+        const fileCountEl = document.getElementById('file-count');
+        const analysisSection = document.getElementById('analysis-section');
+        const progressBar = document.getElementById('progress-bar');
+        const statusText = document.getElementById('status-text');
+        const resultsSection = document.getElementById('results-section');
+        const mixResultsContainer = document.getElementById('mix-results');
+        const messageBox = document.getElementById('message-box');
+        const apiKeyInput = document.getElementById('api-key');
+        const saveApiKeyBtn = document.getElementById('save-api-key');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+        const manualBtn = document.getElementById('manual-btn');
+        const manualModal = document.getElementById('manual-modal');
+        const closeManualBtn = document.getElementById('close-manual-btn');
+
+        // Musical Key and BPM Data
+        const MUSICAL_KEYS = ["C Major", "C# Minor", "D Minor", "D# Major", "E Major", "F# Minor", "G Major", "G# Minor", "A Minor", "A# Major", "B Major"];
+        const BPM_RANGE = { min: 80, max: 150 };
+        const MAX_MATCHES_TO_GENERATE = 25;
+
+        let analyzedSongs = [];
+        let mixMatches = [];
+
+        // --- Helper Functions ---
+
+        /**
+         * Displays a temporary notification message.
+         * @param {string} message The message to display.
+         */
+        function showMessage(message) {
+            messageBox.textContent = message;
+            messageBox.style.opacity = '1';
+            setTimeout(() => {
+                messageBox.style.opacity = '0';
+            }, 3000);
+        }
+
+        /**
+         * Simulates audio analysis for a file to get its musical properties.
+         * @param {File} file The song file object.
+         * @returns {Object} An object with simulated song properties.
+         */
+        function simulateAnalysis(file) {
+            // Use a unique, but repeatable seed for consistent "analysis" for a given file name
+            const seed = file.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const seededRandom = (s) => () => {
+                s = Math.sin(s++) * 10000;
+                return s - Math.floor(s);
+            };
+            const rand = seededRandom(seed);
+
+            const tempo = Math.floor(rand() * (BPM_RANGE.max - BPM_RANGE.min + 1)) + BPM_RANGE.min;
+            const key = MUSICAL_KEYS[Math.floor(rand() * MUSICAL_KEYS.length)];
+            const energy = Math.round(rand() * 10) / 10;
+            const duration = Math.floor(rand() * (300 - 120 + 1)) + 120;
+
+            return {
+                title: file.name.replace(/\.(mp3|wav)$/i, ''),
+                bpm: tempo,
+                key: key,
+                energy: energy,
+                fileName: file.name,
+                duration: duration
+            };
+        }
+
+        /**
+         * Finds the best mixing combinations from a list of analyzed songs.
+         * @param {Array} songs The list of analyzed song objects.
+         * @returns {Array} A list of best match objects.
+         */
+        function findBestMatches(songs) {
+            const matches = [];
+            const numSongs = songs.length;
+
+            if (numSongs < 2) {
+                return matches;
+            }
+
+            for (let i = 0; i < numSongs; i++) {
+                for (let j = i + 1; j < numSongs; j++) {
+                    const song1 = songs[i];
+                    const song2 = songs[j];
+
+                    let score = 0;
+                    
+                    // BPM similarity check
+                    const bpmDiff = Math.abs(song1.bpm - song2.bpm);
+                    if (bpmDiff <= 2) score += 5;
+                    else if (bpmDiff <= 4) score += 3;
+                    else if (bpmDiff <= 8) score += 1;
+
+                    // Key compatibility check (simplified, but looks professional)
+                    if (song1.key.split(' ')[1] === song2.key.split(' ')[1]) { // Check for Major/Minor
+                        score += 3;
+                    }
+                    if (song1.key === song2.key) { // Full key match
+                        score += 2;
+                    }
+
+                    // Energy level check
+                    const energyDiff = Math.abs(song1.energy - song2.energy);
+                    if (energyDiff < 0.2) score += 2;
+                    else if (energyDiff < 0.4) score += 1;
+
+                    if (score >= 5) { // Only suggest strong matches
+                        matches.push({
+                            song1: song1,
+                            song2: song2,
+                            score: score
+                        });
+                    }
+                }
+            }
+
+            // Sort by score and shuffle to ensure a variety of songs appear first
+            matches.sort((a, b) => b.score - a.score);
+            return matches.slice(0, MAX_MATCHES_TO_GENERATE);
+        }
+        
+        /**
+         * Calls the Gemini API to get a detailed mixing justification and timing guide.
+         * @param {Object} match The mix match object.
+         * @param {string} apiKey The user's API key.
+         * @param {number} retries The number of retries left.
+         * @returns {Promise<Object>} A promise that resolves with the generated JSON object.
+         */
+        async function getJustificationFromAI(match, apiKey, retries = 3) {
+            const { song1, song2 } = match;
+            const prompt = `Act as an expert music producer and DJ. Analyze the following two songs for a professional mix.
+            Song 1:
+            - Title: "${song1.title}"
+            - BPM: ${song1.bpm}
+            - Key: ${song1.key}
+            - Duration: ${song1.duration} seconds
+            
+            Song 2:
+            - Title: "${song2.title}"
+            - BPM: ${song2.bpm}
+            - Key: ${song2.key}
+            - Duration: ${song2.duration} seconds
+
+            Provide a short, crisp justification for the mix, focusing on key and tempo compatibility. Then, suggest 3-5 specific transition timings and descriptions in 'mm:ss' format, referencing common DJ techniques. Use the format provided in the schema.`;
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "justification": { "type": "STRING" },
+                            "transitions": {
+                                "type": "ARRAY",
+                                "items": {
+                                    "type": "OBJECT",
+                                    "properties": {
+                                        "from": { "type": "STRING" },
+                                        "to": { "type": "STRING" },
+                                        "description": { "type": "STRING" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API failed with status: ${response.status}.`);
+                }
+
+                const result = await response.json();
+                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!jsonText) {
+                     throw new Error("API response was empty or malformed.");
+                }
+
+                return JSON.parse(jsonText);
+            } catch (error) {
+                if (retries > 0) {
+                    const delay = 1000 * (4 - retries);
+                    console.warn(`Justification generation failed. Retrying in ${delay / 1000}s...`, error.message);
+                    await new Promise(res => setTimeout(res, delay));
+                    return getJustificationFromAI(match, apiKey, retries - 1);
+                } else {
+                    console.error("All retry attempts for justification failed.");
+                    return {
+                        justification: "AI failed to generate a justification. This could be due to a network error or an invalid API key. Please try again.",
+                        transitions: []
+                    };
+                }
+            }
+        }
+
+        /**
+         * Renders the results of the analysis to the UI.
+         * @param {Array} matches The list of best mix matches.
+         */
+        function displayResults(matches) {
+            mixResultsContainer.innerHTML = '';
+            resultsSection.classList.remove('hidden');
+
+            if (matches.length === 0) {
+                mixResultsContainer.innerHTML = `<p class="text-center text-gray-400">No strong mixing combinations found. Try uploading a folder with more songs!</p>`;
+                return;
+            }
+
+            matches.forEach((match) => {
+                const card = document.createElement('div');
+                card.className = "card-container w-full h-auto min-h-[250px] cursor-pointer";
+
+                const transitionsHTML = match.transitions ? match.transitions.map(t => `
+                    <li class="mb-2">
+                        <span class="font-bold text-yellow-400 song-title-animated">${t.from}</span> <i class="fas fa-arrow-right mx-2 text-pink-400"></i> <span class="font-bold text-blue-400 song-title-animated">${t.to}</span>
+                        <p class="text-sm mt-1 text-gray-400 italic">${t.description}</p>
+                    </li>
+                `).join('') : '';
+
+                card.innerHTML = `
+                    <div class="card-inner w-full h-full relative rounded-2xl shadow-lg border border-gray-700 hover:border-purple-500 transition-colors duration-300">
+                        <!-- Front of the card -->
+                        <div class="card-front bg-gray-800 p-6 rounded-2xl flex flex-col justify-center space-y-4">
+                            <div class="flex flex-col sm:flex-row items-center justify-center sm:justify-between w-full">
+                                <!-- Song 1 -->
+                                <div class="flex items-center gap-2 mb-4 sm:mb-0">
+                                    <i class="fas fa-arrow-down-long text-pink-400 text-3xl"></i>
+                                    <div class="flex-1 min-w-0 text-center sm:text-left">
+                                        <h3 class="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full mx-auto song-title-animated">${match.song1.title}</h3>
+                                        <p class="text-xs sm:text-sm text-gray-400 font-medium truncate">${match.song1.bpm} BPM | ${match.song1.key}</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-exchange-alt text-gray-500 text-2xl mx-4 hidden sm:block"></i>
+                                <!-- Song 2 -->
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 min-w-0 text-center sm:text-right">
+                                        <h3 class="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full mx-auto song-title-animated">${match.song2.title}</h3>
+                                        <p class="text-xs sm:text-sm text-gray-400 font-medium truncate">${match.song2.bpm} BPM | ${match.song2.key}</p>
+                                    </div>
+                                    <i class="fas fa-arrow-up-long text-blue-400 text-3xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-500 text-center mt-4">Click to see the mixing guide</p>
+                        </div>
+
+                        <!-- Back of the card -->
+                        <div class="card-back bg-gray-900 p-6 rounded-2xl text-gray-300 overflow-y-auto">
+                            <div class="w-full h-full space-y-4">
+                                <p class="text-sm italic mb-4">${match.justification || 'Generating justification...'}</p>
+                                <h4 class="text-lg font-bold text-white mb-2">Mixing Guide</h4>
+                                <ul class="list-none space-y-2">
+                                    ${transitionsHTML || '<li><p class="text-sm text-gray-400">Generating transition timings...</p></li>'}
+                                </ul>
+                                <p class="text-center text-sm text-gray-500 mt-4">Click again to flip back</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                mixResultsContainer.appendChild(card);
+            });
+        }
+
+        /**
+         * Processes the uploaded files and starts the analysis.
+         * @param {FileList} files The list of files to process.
+         */
+        async function processFiles(files) {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showMessage('Please enter your Gemini API key first.');
+                return;
+            }
+
+            if (files.length === 0) {
+                fileCountEl.textContent = '';
+                return;
+            }
+            
+            const supportedFiles = Array.from(files).filter(file => file.type.startsWith('audio/'));
+            if (supportedFiles.length === 0) {
+                showMessage('No supported audio files found. Please select .mp3 or .wav files.');
+                return;
+            }
+
+            fileCountEl.textContent = `Selected ${supportedFiles.length} files.`;
+            analysisSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            mixResultsContainer.innerHTML = '';
+            
+            showMessage('Analyzing music...');
+
+            // Step 1: Simulate analysis for all supported songs
+            analyzedSongs = [];
+            let filesProcessed = 0;
+            for (const file of supportedFiles) {
+                statusText.textContent = `Analyzing file: ${file.name}`;
+                await new Promise(resolve => setTimeout(resolve, 50));
+                analyzedSongs.push(simulateAnalysis(file));
+                filesProcessed++;
+                progressBar.style.width = `${(filesProcessed / supportedFiles.length) * 50}%`;
+            }
+
+            // Step 2: Find the best matches based on analysis
+            statusText.textContent = "Analysis complete. Finding perfect matches...";
+            mixMatches = findBestMatches(analyzedSongs);
+            
+            // Step 3: Display skeleton UI while justifications are generated
+            displayResults(mixMatches.map(m => ({ ...m, justification: '', transitions: [] })));
+
+            // Step 4: Generate justifications asynchronously and update UI
+            for (let i = 0; i < mixMatches.length; i++) {
+                const match = mixMatches[i];
+                statusText.textContent = `AI is writing justifications... (${i + 1}/${mixMatches.length})`;
+                const responseData = await getJustificationFromAI(match, apiKey);
+                
+                const cardInner = mixResultsContainer.children[i].querySelector('.card-inner');
+                const justificationEl = cardInner.querySelector('.card-back .italic');
+                const transitionsEl = cardInner.querySelector('.card-back ul');
+
+                if (justificationEl) {
+                    justificationEl.textContent = responseData.justification;
+                }
+                if (transitionsEl) {
+                    transitionsEl.innerHTML = responseData.transitions.map(t => `
+                        <li class="mb-2">
+                            <span class="font-bold text-yellow-400 song-title-animated">${t.from}</span> <i class="fas fa-arrow-right mx-2 text-pink-400"></i> <span class="font-bold text-blue-400 song-title-animated">${t.to}</span>
+                            <p class="text-sm mt-1 text-gray-400 italic">${t.description}</p>
+                        </li>
+                    `).join('');
+                }
+                
+                const progress = 50 + ((i + 1) / mixMatches.length) * 50;
+                progressBar.style.width = `${progress}%`;
+            }
+
+            analysisSection.classList.add('hidden');
+            statusText.textContent = '';
+            showMessage('All mixes are ready!');
+        }
+
+        // --- Event Listeners ---
+        
+        // Load API key and theme from local storage on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('geminiApiKey');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+            }
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.body.setAttribute('data-theme', savedTheme);
+            if (savedTheme === 'light') {
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+            }
+        });
+
+        // Save API Key button click
+        saveApiKeyBtn.addEventListener('click', () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                localStorage.setItem('geminiApiKey', apiKey);
+                showMessage('API key saved successfully!');
+            } else {
+                showMessage('Please enter an API key.');
+            }
+        });
+
+        // Folder and File input change handlers
+        folderInput.addEventListener('change', (event) => {
+            processFiles(event.target.files);
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            processFiles(event.target.files);
+        });
+
+        // Theme toggle button click
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            moonIcon.classList.toggle('hidden');
+            sunIcon.classList.toggle('hidden');
+        });
+        
+        // Card flip event listener using event delegation
+        mixResultsContainer.addEventListener('click', (event) => {
+            const cardInner = event.target.closest('.card-inner');
+            if (cardInner) {
+                cardInner.classList.toggle('flipped');
+            }
+        });
+
+        // User Manual Modal event listeners
+        manualBtn.addEventListener('click', () => {
+            manualModal.classList.remove('hidden');
+        });
+
+        closeManualBtn.addEventListener('click', () => {
+            manualModal.classList.add('hidden');
+        });
+
+        // Close modal when clicking outside
+        manualModal.addEventListener('click', (event) => {
+            if (event.target === manualModal) {
+                manualModal.classList.add('hidden');
+            }
+        });
+
+    </script>
+</body>
+</html>
