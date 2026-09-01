@@ -341,7 +341,8 @@
                 key: key,
                 energy: energy,
                 fileName: file.name,
-                duration: duration
+                duration: duration,
+                fileObj: file
             };
         }
 
@@ -519,6 +520,9 @@
                                     <div class="flex-1 min-w-0 text-center sm:text-left">
                                         <h3 class="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full mx-auto song-title-animated">${match.song1.title}</h3>
                                         <p class="text-xs sm:text-sm text-gray-400 font-medium truncate">${match.song1.bpm} BPM | ${match.song1.key}</p>
+                                        <div class="mt-2 text-center" onclick="event.stopPropagation()">
+                                            <audio controls class="w-full max-w-[150px] h-8 mx-auto" src="${URL.createObjectURL(match.song1.fileObj)}"></audio>
+                                        </div>
                                     </div>
                                 </div>
                                 <i class="fas fa-exchange-alt text-gray-500 text-2xl mx-4 hidden sm:block"></i>
@@ -527,11 +531,14 @@
                                     <div class="flex-1 min-w-0 text-center sm:text-right">
                                         <h3 class="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full mx-auto song-title-animated">${match.song2.title}</h3>
                                         <p class="text-xs sm:text-sm text-gray-400 font-medium truncate">${match.song2.bpm} BPM | ${match.song2.key}</p>
+                                        <div class="mt-2 text-center" onclick="event.stopPropagation()">
+                                            <audio controls class="w-full max-w-[150px] h-8 mx-auto" src="${URL.createObjectURL(match.song2.fileObj)}"></audio>
+                                        </div>
                                     </div>
                                     <i class="fas fa-arrow-up-long text-blue-400 text-3xl"></i>
                                 </div>
                             </div>
-                            <p class="text-sm text-gray-500 text-center mt-4">Click to see the mixing guide</p>
+                            <p class="text-sm text-gray-500 text-center mt-4">Click anywhere else to see the mixing guide</p>
                         </div>
 
                         <!-- Back of the card -->
@@ -642,6 +649,25 @@
             if (savedTheme === 'light') {
                 moonIcon.classList.add('hidden');
                 sunIcon.classList.remove('hidden');
+            }
+
+            // Load saved history
+            const savedHistory = localStorage.getItem('mixHistory');
+            if (savedHistory) {
+                try {
+                    const parsedHistory = JSON.parse(savedHistory);
+                    if (parsedHistory && parsedHistory.length > 0) {
+                        // Create fake File objects for UI rendering since we can't save File objects to local storage
+                        const matchesWithFakeFiles = parsedHistory.map(m => {
+                            m.song1.fileObj = new Blob();
+                            m.song2.fileObj = new Blob();
+                            return m;
+                        });
+                        displayResults(matchesWithFakeFiles);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse history", e);
+                }
             }
         });
 

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AI DJ Mix Analyzer</string>
+    <string name="title_activity_main">AI DJ Mix Analyzer</string>
+    <string name="package_name">com.srmusic.aidjmix</string>
+    <string name="custom_url_scheme">com.srmusic.aidjmix</string>
+</resources>
